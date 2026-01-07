@@ -1,0 +1,16 @@
+{
+  "name": "ci-demo",
+  "version": "1.0.0",
+  "description": "Small CI demo using GitHub Actions",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "jest --ci",
+    "lint": "node -c src/index.js"
+  },
+  "keywords": [],
+  "author": "Michael Liriano",
+  "license": "ISC",
+  "devDependencies": {
+    "jest": "^30.2.0"
+  }
+}
