@@ -27,3 +27,16 @@ jobs:
 
       - name: Run tests
         run: npm test
+      
+      - name: Build artifact (tarball)
+        run: |
+          mkdir -p dist
+          cp -r src package.json package-lock.json dist/
+          tar -czf ci-demo-${{ github.run_number }}.tgz dist
+
+      - name: Upload artifact to GitHub Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-demo-build
+          path: ci-demo-${{ github.run_number }}.tgz
+
