@@ -39,4 +39,20 @@ jobs:
         with:
           name: ci-demo-build
           path: ci-demo-${{ github.run_number }}.tgz
+      - name: Compute artifact digest
+        id: digest
+        run: |
+          echo "sha=$(shasum -a 256 ci-demo-${{ github.run_number }}.tgz | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      - name: Register build artifact in CloudBees Unify
+        uses: cloudbees-io-gha/register-build-artifact@v3
+        with:
+          cloudbees-pat: ${{ secrets.CLOUDBEES_PAT }}
+          name: ci-demo
+          version: ${{ github.run_number }}
+          url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          digest: sha256:${{ steps.digest.outputs.sha }}
+          type: generic
+          label: github-actions,ci-demo
+        
 
