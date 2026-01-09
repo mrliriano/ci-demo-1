@@ -50,9 +50,12 @@ jobs:
         run: |
           echo "sha=$(shasum -a 256 ci-demo-${{ github.run_number }}.tgz | awk '{print $1}')" >> $GITHUB_OUTPUT
 
+  
       - name: Register build artifact in CloudBees Unify
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: cloudbees-io-gha/register-build-artifact@v3
         with:
+          cloudbees-url: https://api.cloudbees.io
           name: ci-demo
           version: ${{ github.run_number }}
           url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -62,6 +65,7 @@ jobs:
           commit: ${{ github.sha }}
           repository-url: ${{ github.server_url }}/${{ github.repository }}
           ref: ${{ github.ref }}
+
 
         
 
