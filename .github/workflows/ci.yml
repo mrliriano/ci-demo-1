@@ -2,10 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-
-
 
 jobs:
   test:
@@ -30,16 +28,40 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Run tests
+      # Note: Run tests and generate JUnit XML (jest-junit)
+      - name: Run tests (JUnit output)
         run: npm test
-      
+        env:
+          JEST_JUNIT_OUTPUT_DIR: test-results
+          JEST_JUNIT_OUTPUT_NAME: junit.xml
+
+      - name: Verify JUnit report exists
+        run: ls -l test-results && test -f test-results/junit.xml
+
+      # Note: Publish test results to CloudBees Unify
+      - name: Publish test results to CloudBees Unify
+        uses: cloudbees-io-gha/publish-test-results@v2
+        with:
+          cloudbees-url: https://api.cloudbees.io
+          test-type: junit
+          results-path: test-results/junit.xml
+
+      # Note: keep the JUnit report as a GitHub Actions artifact too
+      - name: Upload JUnit report to GitHub Actions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-report
+          path: test-results/junit.xml
+
+      # Note: Create + upload build artifact
       - name: Build artifact (tarball)
         run: |
           mkdir -p dist
           cp -r src package.json package-lock.json dist/
           tar -czf ci-demo-${{ github.run_number }}.tgz dist
 
-      - name: Upload artifact to GitHub Actions
+      - name: Upload build artifact to GitHub Actions
         uses: actions/upload-artifact@v4
         with:
           name: ci-demo-build
@@ -50,7 +72,7 @@ jobs:
         run: |
           echo "sha=$(shasum -a 256 ci-demo-${{ github.run_number }}.tgz | awk '{print $1}')" >> $GITHUB_OUTPUT
 
-  
+      # Note: Register artifact in CloudBees Unify (main branch only)
       - name: Register build artifact in CloudBees Unify
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: cloudbees-io-gha/register-build-artifact@v3
@@ -65,7 +87,3 @@ jobs:
           commit: ${{ github.sha }}
           repository-url: ${{ github.server_url }}/${{ github.repository }}
           ref: ${{ github.ref }}
-
-
-        
-
