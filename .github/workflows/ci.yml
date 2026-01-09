@@ -29,11 +29,20 @@ jobs:
         run: npm run lint
 
       # Note: Run tests and generate JUnit XML (jest-junit)
+
       - name: Run tests (JUnit output)
-        run: npm test
+        run: |
+          mkdir -p test-results
+          npm test
+          echo "Contents of test-results:"
+          ls -la test-results
         env:
           JEST_JUNIT_OUTPUT_DIR: test-results
           JEST_JUNIT_OUTPUT_NAME: junit.xml
+
+      - name: Verify JUnit report exists
+        run: test -f test-results/junit.xml
+
 
       - name: Verify JUnit report exists
         run: ls -l test-results && test -f test-results/junit.xml
