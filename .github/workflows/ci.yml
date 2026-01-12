@@ -83,20 +83,22 @@ jobs:
           echo "sha=$(shasum -a 256 ci-demo-${{ github.run_number }}.tgz | awk '{print $1}')" >> $GITHUB_OUTPUT
 
       # Note: Register artifact in CloudBees Unify (main branch only)
+      
       - name: Register build artifact in CloudBees Unify
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: cloudbees-io-gha/register-build-artifact@v3
         with:
           cloudbees-url: https://api.cloudbees.io
-          version: 1.0.1
-          url: 476449643511.dkr.ecr.eu-north-1.amazonaws.com/mlcb/demo-artifact2:${{cloudbees.version}}
-          name: demo-artifact2:${{cloudbees.version}}
+          name: demo-artifact2
+          version: ${{ github.run_number }}
+          url: 476449643511.dkr.ecr.eu-north-1.amazonaws.com/mlcb/demo-artifact2:${{ github.run_number }}
           digest: sha256:${{ steps.digest.outputs.sha }}
           type: generic
           label: github-actions,ci-demo
           commit: ${{ github.sha }}
           repository-url: ${{ github.server_url }}/${{ github.repository }}
           ref: ${{ github.ref }}
+
 
       # Note: Build a docker image (intentionally vulnerable)
       - name: Build docker image
