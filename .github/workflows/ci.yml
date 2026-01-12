@@ -105,7 +105,7 @@ jobs:
       - name: Save docker image to tar
         run: docker save ci-demo:${{ github.run_number }} -o image.tar
 
-      # Note: Scan image and publish vulnerabilities to CloudBees Unify
+      # Note: Scan image and publish vulnerabilities to CloudBees Unify try
       - name: Trivy scan and publish to CloudBees Unify
         uses: cloudbees-io-gha/trivy-scan-publish@v2
         with:
