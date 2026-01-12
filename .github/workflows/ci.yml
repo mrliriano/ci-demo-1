@@ -97,3 +97,11 @@ jobs:
           commit: ${{ github.sha }}
           repository-url: ${{ github.server_url }}/${{ github.repository }}
           ref: ${{ github.ref }}
+
+      # Note: Build a docker image (intentionally vulnerable)
+      - name: Build docker image
+        run: docker build -t ci-demo:${{ github.run_number }} .
+
+      - name: Save docker image to tar
+        run: docker save ci-demo:${{ github.run_number }} -o image.tar
+
