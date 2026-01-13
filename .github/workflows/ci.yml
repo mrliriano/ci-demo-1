@@ -12,6 +12,11 @@ jobs:
       contents: read
       id-token: write
 
+    env:
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,8 +33,7 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # Note: Run tests and generate JUnit XML (jest-junit)
-
+      # --- Tests + JUnit output ---
       - name: Run tests (JUnit output)
         run: |
           mkdir -p test-results
@@ -44,11 +48,7 @@ jobs:
       - name: Verify JUnit report exists
         run: test -f test-results/junit.xml
 
-
-      - name: Verify JUnit report exists
-        run: ls -l test-results && test -f test-results/junit.xml
-
-      # Note: Publish test results to CloudBees Unify
+      # Publish test results to CloudBees Unify (PRs + main)
       - name: Publish test results to CloudBees Unify
         uses: cloudbees-io-gha/publish-test-results@v2
         with:
@@ -56,7 +56,7 @@ jobs:
           test-type: junit
           results-path: test-results/junit.xml
 
-      # Note: keep the JUnit report as a GitHub Actions artifact too
+      # Keep JUnit as a GitHub Actions artifact too (handy for demos)
       - name: Upload JUnit report to GitHub Actions
         if: always()
         uses: actions/upload-artifact@v4
@@ -64,53 +64,64 @@ jobs:
           name: junit-report
           path: test-results/junit.xml
 
-      # Note: Create + upload build artifact
-      - name: Build artifact (tarball)
-        run: |
-          mkdir -p dist
-          cp -r src package.json package-lock.json dist/
-          tar -czf ci-demo-${{ github.run_number }}.tgz dist
+      # =========================
+      # ECR push + Unify artifact registration (main only)
+      # =========================
 
-      - name: Upload build artifact to GitHub Actions
-        uses: actions/upload-artifact@v4
+      - name: Configure AWS credentials (OIDC)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: aws-actions/configure-aws-credentials@v5
         with:
-          name: ci-demo-build
-          path: ci-demo-${{ github.run_number }}.tgz
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Compute artifact digest
-        id: digest
+      - name: Login to Amazon ECR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to ECR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          echo "sha=$(shasum -a 256 ci-demo-${{ github.run_number }}.tgz | awk '{print $1}')" >> $GITHUB_OUTPUT
+          IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${{ github.run_number }}"
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
-      # Note: Register artifact in CloudBees Unify (main branch only)
-      
-      - name: Register build artifact in CloudBees Unify
+          docker build -t "$IMAGE_URI" .
+          docker push "$IMAGE_URI"
+
+      - name: Compute image digest
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: imgdigest
+        run: |
+          DIGEST="$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE_URI" | awk -F@ '{print $2}')"
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+          echo "Pushed digest: $DIGEST"
+
+      - name: Register Docker image artifact in CloudBees Unify
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: cloudbees-io-gha/register-build-artifact@v3
         with:
           cloudbees-url: https://api.cloudbees.io
-          name: ci-demo-artifact2
+          name: ci-demo-image
           version: ${{ github.run_number }}
-          url: 476449643511.dkr.ecr.eu-north-1.amazonaws.com/mlcb/ci-demo-artifact2:${{ github.run_number }}
-          digest: sha256:${{ steps.digest.outputs.sha }}
-          type: generic
-          label: github-actions,ci-demo
+          url: ${{ env.IMAGE_URI }}
+          digest: ${{ steps.imgdigest.outputs.digest }}
+          type: docker
+          label: github-actions,ci-demo,ecr
           commit: ${{ github.sha }}
           repository-url: ${{ github.server_url }}/${{ github.repository }}
           ref: ${{ github.ref }}
 
+      # =========================
+      # Vulnerability scan publish to Unify (main only)
+      # =========================
 
-      # Note: Build a docker image (intentionally vulnerable)
-      - name: Build docker image
-        run: docker build -t ci-demo:${{ github.run_number }} .
+      - name: Save image to tar for scanning
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: docker save "$IMAGE_URI" -o image.tar
 
-      - name: Save docker image to tar
-        run: docker save ci-demo:${{ github.run_number }} -o image.tar
-
-      # Note: Scan image and publish vulnerabilities to CloudBees Unify 1 1
-      - name: Trivy scan and publish to CloudBees Unify
+      - name: Trivy scan and publish vulnerabilities to CloudBees Unify
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: cloudbees-io-gha/trivy-scan-publish@v2
         with:
           cloudbees-url: https://api.cloudbees.io
           binary-tar-path: image.tar
-
