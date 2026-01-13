@@ -89,9 +89,9 @@ jobs:
         uses: cloudbees-io-gha/register-build-artifact@v3
         with:
           cloudbees-url: https://api.cloudbees.io
-          name: demo-artifact2
+          name: ci-demo-artifact2
           version: ${{ github.run_number }}
-          url: 476449643511.dkr.ecr.eu-north-1.amazonaws.com/mlcb/demo-artifact2:${{ github.run_number }}
+          url: 476449643511.dkr.ecr.eu-north-1.amazonaws.com/mlcb/ci-demo-artifact2:${{ github.run_number }}
           digest: sha256:${{ steps.digest.outputs.sha }}
           type: generic
           label: github-actions,ci-demo
