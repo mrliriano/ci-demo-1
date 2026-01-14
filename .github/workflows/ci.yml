@@ -75,6 +75,15 @@ jobs:
           fi
           echo "AWS_ROLE_ARN secret is present (masked)."
 
+      - name: Show OIDC token claims (safe)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          TOKEN_JSON=$(curl -sH "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com")
+          TOKEN=$(echo "$TOKEN_JSON" | python -c "import sys, json; print(json.load(sys.stdin)['value'])")
+          PAYLOAD=$(echo "$TOKEN" | cut -d '.' -f2 | python -c "import sys,base64,json; p=sys.stdin.read().strip(); p+='='*((4-len(p)%4)%4); print(json.dumps(json.loads(base64.urlsafe_b64decode(p)), indent=2))")
+          echo "$PAYLOAD"
+      
       - name: Configure AWS credentials (OIDC)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: aws-actions/configure-aws-credentials@v5
