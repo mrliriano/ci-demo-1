@@ -68,6 +68,10 @@ jobs:
       # =========================
       # ECR push + Unify artifact registration (main only)
       # =========================
+      
+      - name: Debug role ARN being assumed
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: echo "AWS_ROLE_ARN=${{ secrets.AWS_ROLE_ARN }}"
 
       - name: Configure AWS credentials (OIDC)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
