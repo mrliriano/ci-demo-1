@@ -48,7 +48,6 @@ jobs:
       - name: Verify JUnit report exists
         run: test -f test-results/junit.xml
 
-      # Publish test results to CloudBees Unify (PRs + main)
       - name: Publish test results to CloudBees Unify
         uses: cloudbees-io-gha/publish-test-results@v2
         with:
@@ -56,7 +55,6 @@ jobs:
           test-type: junit
           results-path: test-results/junit.xml
 
-      # Keep JUnit as a GitHub Actions artifact too (handy for demos)
       - name: Upload JUnit report to GitHub Actions
         if: always()
         uses: actions/upload-artifact@v4
@@ -65,27 +63,25 @@ jobs:
           path: test-results/junit.xml
 
       # =========================
-      # ECR push + Unify artifact registration (main only) 
+      # ECR push + Unify artifact registration (main only)
       # =========================
-      
-      - name: Debug role ARN being assumed
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: echo "AWS_ROLE_ARN=${{ secrets.AWS_ROLE_ARN }}"
 
-      - name: Show workflow commit + file
+      - name: Assert AWS_ROLE_ARN secret is set
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
-          echo "Commit: $GITHUB_SHA"
-          echo "Workflow file: .github/workflows/ci.yml"
-          sed -n '1,200p' .github/workflows/ci.yml
-
+          if [ -z "${{ secrets.AWS_ROLE_ARN }}" ]; then
+            echo "AWS_ROLE_ARN secret is EMPTY or missing."
+            exit 1
+          fi
+          echo "AWS_ROLE_ARN secret is present (masked)."
 
       - name: Configure AWS credentials (OIDC)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: "${{ secrets.AWS_ROLE_ARN }}"
+          aws-region: "${{ vars.AWS_REGION }}"
+          role-skip-session-tagging: true
 
       - name: Login to Amazon ECR
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -96,6 +92,7 @@ jobs:
         run: |
           IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${{ github.run_number }}"
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+          echo "IMAGE_URI=$IMAGE_URI"
 
           docker build -t "$IMAGE_URI" .
           docker push "$IMAGE_URI"
@@ -104,6 +101,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: imgdigest
         run: |
+          docker pull "$IMAGE_URI"
           DIGEST="$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE_URI" | awk -F@ '{print $2}')"
           echo "digest=$DIGEST" >> $GITHUB_OUTPUT
           echo "Pushed digest: $DIGEST"
@@ -124,7 +122,7 @@ jobs:
           ref: ${{ github.ref }}
 
       # =========================
-      # Vulnerability scan publish to Unify (main only) 
+      # Vulnerability scan publish to Unify (main only)
       # =========================
 
       - name: Save image to tar for scanning
