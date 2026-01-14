@@ -72,6 +72,14 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: echo "AWS_ROLE_ARN=${{ secrets.AWS_ROLE_ARN }}"
 
+      - name: Show workflow commit + file
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          echo "Commit: $GITHUB_SHA"
+          echo "Workflow file: .github/workflows/ci.yml"
+          sed -n '1,200p' .github/workflows/ci.yml
+
+
       - name: Configure AWS credentials (OIDC)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: aws-actions/configure-aws-credentials@v5
