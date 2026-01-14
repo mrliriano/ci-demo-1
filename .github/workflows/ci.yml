@@ -65,7 +65,7 @@ jobs:
           path: test-results/junit.xml
 
       # =========================
-      # ECR push + Unify artifact registration (main only)
+      # ECR push + Unify artifact registration (main only) 
       # =========================
       
       - name: Debug role ARN being assumed
