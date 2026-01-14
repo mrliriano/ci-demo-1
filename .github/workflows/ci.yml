@@ -113,9 +113,9 @@ jobs:
           ref: ${{ github.ref }}
 
       # =========================
-      # Vulnerability scan publish to Unify (main only)
+      # Vulnerability scan publish to Unify (main only) 
       # =========================
-
+1
       - name: Save image to tar for scanning
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: docker save "$IMAGE_URI" -o image.tar
