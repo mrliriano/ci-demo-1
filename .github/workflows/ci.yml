@@ -63,7 +63,7 @@ jobs:
           path: test-results/junit.xml
 
       # =========================
-      # ECR push + Unify artifact registration (main only)1
+      # ECR push + Unify artifact registration (main only)
       # =========================
 
       - name: Assert AWS_ROLE_ARN secret is set
