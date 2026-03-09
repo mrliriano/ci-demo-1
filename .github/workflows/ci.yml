@@ -33,7 +33,7 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # --- Tests + JUnit output ---1
+      # --- Tests + JUnit output ---
       - name: Run tests (JUnit output)
         run: |
           mkdir -p test-results
