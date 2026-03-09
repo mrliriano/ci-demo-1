@@ -33,7 +33,7 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # --- Tests + JUnit output ---
+      # --- Tests + JUnit output ---1
       - name: Run tests (JUnit output)
         run: |
           mkdir -p test-results
@@ -129,6 +129,35 @@ jobs:
           commit: ${{ github.sha }}
           repository-url: ${{ github.server_url }}/${{ github.repository }}
           ref: ${{ github.ref }}
+
+      - name: Publish build evidence to CloudBees Unify
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: cloudbees-io-gha/publish-evidence-item@v2
+        with:
+          cloudbees-url: https://api.cloudbees.io
+          format: markdown
+          content: |
+            ## Docker Image Published to ECR
+
+            **Repository:** `${{ github.repository }}`
+            **Branch:** `main`
+            **Run Number:** `${{ github.run_number }}`
+
+            ### Docker Image
+            - **Image URI:** `${{ env.IMAGE_URI }}`
+            - **Image Digest:** `${{ steps.imgdigest.outputs.digest }}`
+
+            ### Source
+            - **Commit SHA:** `${{ github.sha }}`
+            - **Workflow:** `${{ github.workflow }}`
+
+            ### Statement
+            This evidence confirms that the Docker image was successfully:
+            - Built in GitHub Actions
+            - Pushed to AWS ECR using OIDC authentication
+            - Registered in CloudBees Unify for traceability
+
+            _This evidence item is generated automatically as part of the CI pipeline._
 
       # =========================
       # Vulnerability scan publish to Unify (main only)
